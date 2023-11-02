@@ -3,14 +3,17 @@
 <br>
 
 ## Companion Articles
+
 * [Hexagonal Architecture with Java and Spring](https://reflectoring.io/spring-hexagonal/)
 * [Building a Multi-Module Spring Boot Application with Gradle](https://reflectoring.io/spring-boot-gradle-multi-module/)
 
 ## Prerequisites
+
 * JDK 17
 * this project uses Lombok, so enable annotation processing in your IDE
 
 ## Table of Contents
+
 * 01장: 계층형 아키텍처의 문제는 무엇일까?
 * 02장: 의존성 역전하기
 * 03장: 코드 구성하기
