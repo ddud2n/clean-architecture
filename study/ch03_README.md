@@ -106,6 +106,8 @@ Account와 관련된 유스케이스는 모두 account 패키지 안에 있다.
     - application의 port(in, out) : ex. `SendMoneyUseCase`, `LoadAccountPort`, `UpdateAccountStatePort`
     - 도메인 클래스 : ex. `Account`, `Activity`
 
+<br>
+
 ## 의존성 주입의 역할
 
 * 클린 아키텍처의 본질
