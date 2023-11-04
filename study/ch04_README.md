@@ -214,18 +214,16 @@ new SendMoneyCommandBuilder()
 
 **But 빌더 말고 생성자를 직접 사용했다면 컴파일 에러에 따라 나머지 코드에 즉각 변경사항을 반영**할 수 있었을 것이다.
 
-
 <br>
 
-
-## 유스케이스마다 다른 입력 모델
+### 유스케이스마다 다른 입력 모델
 
 - 계좌 등록하기 기능과 계좌 정보 업데이트하기 두 기능의 입력 모델에 ID의 유무 차이가 있다면 유효성 검사는 어떻게 해야할까?
-- `각 유스케이스 전용 입력 모델`은 유스케이스를 훨씬 정확하게 만들고 다른 유스케이스와의 결합도를 제거해서 불필요한 부수효과가 발생하지 않게 한다.
+- `각 유스케이스 전용 입력 모델 (Command)`은 유스케이스를 훨씬 정확하게 만들고 다른 유스케이스와의 결합도를 제거해서 불필요한 부수효과가 발생하지 않게 한다.
 
 <br>
 
-## 비즈니스 규칙 검증하기
+## 4) 비즈니스 규칙 검증하기
 
 - 비즈니스 규칙 검증
   - 도메인 모델의 `현재 상태에 접근`한다.
@@ -270,7 +268,7 @@ public class SendMoneyService implements SendMoneyUseCase {
 <br>
 
 
-## 풍부한 도메인 모델 vs 빈약한 도메인 모델
+## 5) 풍부한 도메인 모델 vs 빈약한 도메인 모델
 
 - `풍부한 도메인 모델(rich domain model)`
   - 엔티티에서 가능한 많은 도메인 로직이 구현
@@ -281,48 +279,51 @@ public class SendMoneyService implements SendMoneyUseCase {
   - 도메인 로직은 유스케이스 클래스에만 구현
   - 비즈니스 규칙을 검증하고, 엔티티의 상태를 바꾸고, 데이터 베이스 저장을 담당하는 아웃고잉 포트에 엔티티를 전달할 책임 역시 유스케이스 클래스에 있음
 
-## 유스케이스마다 다른 출력 모델
+<br>
+
+## 6) 유스케이스마다 다른 출력 모델
 
 - 입력과 비슷하게 출력도 가능하면 각 유스케이스에 맞게 구체적일수록 좋다
 - 출력은 호출자에게 꼭 필요한 데이터만 들고 있어야 한다
 - 유스케이스들 간에 같은 출력 모델을 공유하면 유스케이스들도 강하게 결합됨
 - 같은 이유로 도메인 엔티티를 출력 모델로 사용하고 싶은 유혹도 견뎌야 한다.
 
-## 읽기 전용 유스케이스
+<br>
 
-- 읽기전용 유스케이스를 구현하는 방법
+## 7) 읽기 전용 유스케이스
 
 ```java
 package buckpal.application.service;
 
 @RequiredArgsConstructor
 class GetAccountBalanceService implements GetAccountBalanceQuery {
+    // GetAccountBalanceQuery 인커밍 포트 구현
+    // 읽기 전용 쿼리는 쓰기가 가능한 유스케이스(또는 ‘커멘드’)와 코드 상에서 명확하게 구분
 	private final LoadAccountPort loadAccountPort;
+    // 데이터베이스로부터 실제 데이터를 로드하기 위해 LoadAccountPort라는 아웃고잉 포트를 호출
 
 	@Override
 	public Money getAccountBalance(AccountId, accountId){
-		return loadAccountPort.loadAccount(accoutId, LocalDateTime.now()).calculateBalance();
+        // 아웃고잉 포트로 쿼리를 전달하는 것 외에 다른 일을 하지 않는다. 
+       // 여러 계층에 걸쳐 같은 모델을 사용하면 지름길을 써서 클라이언트가 아웃고잉 포트를 직접 호출하게 할 수도 있음
+      return loadAccountPort.loadAccount(accoutId, LocalDateTime.now()).calculateBalance();
 	}
 }
 ```
 
-- 쿼리 서비스 구현
-  - GetAccountBalanceQuery 인커밍 포트 구현
-  - 데이터베이스로부터 실제 데이터를 로드하기 위해 LoadAccountPort라는 아웃고잉 포트를 호출
-- 읽기 전용 쿼리는 쓰기가 가능한 유스케이스(또는 ‘커멘드’)와 코드 상에서 명확하게 구분
+* `SQS(Command-Query Separation)`
+* `CQRS(Command-Query Responsibility Segregation)`
 
-  ⇒ SQS(Command-Query Separation)
-  ⇒ CQRS(Command-Query Responsibility Segregation)
-
-- GetAccountBalanceService 서비스에서는 아웃고잉 포트로 쿼리를 전달하는 것 외에 다른 일을 하지 않는다. 여러 계층에 걸쳐 같은 모델을 사용하면 지름길을 써서 클라이언트가 아웃고잉 포트를 직접 호출하게 할 수도 있음
 
 > CQRS란? 흔히 말하는 CRUD(Create, Read, Update, Delete)에서 CUD(Command)와 R(Query)를 구분하자는 것.
 > **CQRS의 장점**
 > 1. Read와 CUD 각각에 더 최적화된 Database 구성을 통해서 성능을 더 향상시킬 수 있다.
 > 2. Read와 CUD에서 필요한 데이터 형식이 다를 수 있고, 특히 Read는 aggregation(집계 함수) 등의 부가적인 attribute들이 Entity에 필요하게 될 수 있다. R과 CUD를 분리함으로써 R로 인해 Entity의 구조가 변경되는 것을 막을 수 있다.
 > 3. R과 CUD를 분리함으로써 과도하게 복잡한 모델을 덜 복합하게 만듦으로서 시스템 복잡도를 줄일 수 있다.
-     > 출처: [Log.bluayer](https://bluayer.com/37)
 
+
+
+<br>
 
 ## 유지보수 가능한 소프트웨어를 만드는데 어떻게 도움이 될까?
 
@@ -330,10 +331,4 @@ class GetAccountBalanceService implements GetAccountBalanceQuery {
 - 유스케이스 간에 모델을 공유하는 것보다 별도 모델을 만들고, 엔티티를 매핑하는 등의 추가 작업을 해주어야 한다.
 - 유스케이스별로 모델을 만들면 유스케이스를 명확하게 이해할 수 있고 장기적으로 유지보수하기도 더 쉽다
 - 꼼꼼한 입력 유효성 검증, 유스케이스 별 입출력 모델은 지속가능한 코드를 만드는데 큰 도움이 된다.
-
-
-
-
-
-
 
