@@ -9,8 +9,8 @@
 - 앱은 영속성 기능을 사용하기 위해 포트 호출. 이 포트는 영속성 어댑터에 의해 구현.(DIP)
 - 헥사고날 아키텍처에서 영속성 어댑터는 앱에서 호출하기 때문에 `outgoing` 어댑터
 - 포트는 앱과 영속성 사이의 간접적 계층
-  - 영속성 문제에 신경쓰지 않고 도메인 코드 개발 즉,코드 의존성을 없앤다
-  - 영속성 코드를 변경하더라도 코어 코드에 영향이 없다
+    - 영속성 문제에 신경쓰지 않고 도메인 코드 개발 즉,코드 의존성을 없앤다
+    - 영속성 코드를 변경하더라도 코어 코드에 영향이 없다
 - DIP로 인해 정적인 상황에서는 의존성이 역전되었지만, 동적인 타임에는 여전히 앱이 영속성 코드에 의존하고 있다.
 - 하지만 인터페이스 계약을 만족하는 한 영속성 코드 수정은 문제가 없다.
 
@@ -21,15 +21,15 @@
 > 영속성 어댑터가 일반적으로 하는 일.
 
 1. 입력을 받는다
-   - 입력 모델은 인터페이스의 도메인 엔티티나 특정 데이터베이스 연산 전용 객체
+    - 입력 모델은 인터페이스의 도메인 엔티티나 특정 데이터베이스 연산 전용 객체
 2. 입력을 데이터베이스 포맷으로 매핑한다
-   - JPA인 경우 JPA 엔티티 객체로 매핑
-   - 맥락에 따라 매핑이 필요하지 않는 경우도 있음
-   - JPA가 아닌 어떤 기술도 상관없음
-   - **핵심은 영속성 어댑터의 입력 모델이 어댑터가 아닌 코어에 존재. 이로인해 어댑터 변경이 코어에 영향을 주지 않는다**
+    - JPA인 경우 JPA 엔티티 객체로 매핑
+    - 맥락에 따라 매핑이 필요하지 않는 경우도 있음
+    - JPA가 아닌 어떤 기술도 상관없음
+    - **핵심은 영속성 어댑터의 입력 모델이 어댑터가 아닌 코어에 존재. 이로인해 어댑터 변경이 코어에 영향을 주지 않는다**
 3. 입력을 데이터베이스로 보낸다
 4. 데이터베이스 출력을 애플리케이션 포맷으로 매핑한다
-   - `출력 모델도 코어에 위치`
+    - `출력 모델도 코어에 위치`
 5. 출력을 반환한다
 
 <br>
@@ -43,8 +43,8 @@
 - 위 그림처럼 하나에 리포지터리 인터페이스에 담아 놓는게 일반적이다.
 - 하지만 이럴경우 `넓은` 포트 인터페이스 문제점을 갖게 된다. (`SRP 위배`)
 - 이로 인해 불필요한 의존이 생기고 테스트를 어렵게 한다
-  - 위 그림에서 RegisterAccountService를 테스트 한다면 AccountRepository 모킹을 해야할 때 어떤 메서드를 모킹해야 하는지 일일이 찾아봐야한다.
-  - 또한, 다음에 이 테스트에 작업하는 사람은 인터페이스 전체가 모킹 되었다고 오해를 할 수도 있다.
+    - 위 그림에서 RegisterAccountService를 테스트 한다면 AccountRepository 모킹을 해야할 때 어떤 메서드를 모킹해야 하는지 일일이 찾아봐야한다.
+    - 또한, 다음에 이 테스트에 작업하는 사람은 인터페이스 전체가 모킹 되었다고 오해를 할 수도 있다.
 - 따라서 `ISP(Interface Segregation Principle 인터페이스 분리 원칙)`을 적용해야한다.
 
 ![image](https://user-images.githubusercontent.com/6725753/157164231-df353c57-52c7-435b-84e0-b6364d6a26c0.png)
@@ -72,39 +72,189 @@
 
 ## 스프링 데이터 JPA 예제
 
-![image](https://user-images.githubusercontent.com/6725753/157206294-836266cc-902a-4910-bf01-9bff27bb0f85.png)
+```java
 
-- 불변성
-- 유효한 상태의 Account 엔티티만 생성하도록 팩토리 메서드 제공
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Account {
 
-![image](https://user-images.githubusercontent.com/6725753/157207939-c3f03a67-1320-4c57-af0d-6b60ef215399.png)
+    private final AccountId id;
+    @Getter
+    private final Money baselineBalance;
+    @Getter
+    private final ActivityWindow activityWindow;
 
-- 영속성 어댑터를 위한 Account 엔티티 따로 정의
+    // 유효한 상태의 Account 엔티티만 생성하도록 팩토리 메서드 제공
+    public static Account withoutId(
+            Money baselineBalance,
+            ActivityWindow activityWindow) {
+        return new Account(null, baselineBalance, activityWindow);
+    }
 
-![image](https://user-images.githubusercontent.com/6725753/157208048-3ea1992e-d824-4f02-88ad-15c2a08cb7c4.png)
+    public static Account withId(
+            AccountId accountId,
+            Money baselineBalance,
+            ActivityWindow activityWindow) {
+        return new Account(accountId, baselineBalance, activityWindow);
+    }
+}
+```
 
-- 영속성 어댑터에서 사용할 Activity 엔티티 정의
-- JPA의 @ManyToOne 이나 @OneToMany 는 부수효과에 비해 아직 크게 필요하지 않다 판단되어 사용안함
-- JPA는 좋은 도구이나 그에 비해 많은 문제가 있을 수 있다
+```java
 
-![image](https://user-images.githubusercontent.com/6725753/157208177-87d6cd48-915f-43a9-91df-97ae203ef8bf.png)
+@Entity
+@Table(name = "account")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+class AccountJpaEntity {
+    // 영속성 어댑터를 위한 Account 엔티티 따로 정의
 
-- ActivityRepository는 스프링에 의해서 자동으로 구현체가 생성된다
+    @Id
+    @GeneratedValue
+    private Long id;
 
+}
+```
 
-![image](https://user-images.githubusercontent.com/6725753/157208365-5ed04dfc-1e55-4770-9365-214f0e5f95bc.png)
-![image](https://user-images.githubusercontent.com/6725753/157209754-e4720cce-3f0d-4bcd-b256-f0ea82731623.png)
+```java
 
-- 실제 영속성 어댑터
-- LoadAccountPort / UpdateAccountStatePort 두 개의 포트를 구현한다
-- Account를 디비에서 불러오고
-- 베이스 날짜 이후 Activity르 가져오고
-- 베이스 잔고를 구하기 위해 베이스 날짜 전까지의 입금 / 출금 활동을 디비에서 가져와서
-- Account Entity로 변경시 베이스 잔고를 계산한다
+@Entity
+@Table(name = "activity")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+class ActivityJpaEntity {
+    // 영속성 어댑터에서 사용할 Activity 엔티티 정의
 
-![image](https://user-images.githubusercontent.com/6725753/157210568-cc849ca6-3b52-4ac1-9b09-48e5e48f0894.png)
+    @Id
+    @GeneratedValue
+    private Long id;
 
-- 도메인 엔티티와 영속성 엔티티 간에 쌍으로 존재한다. 굳이 이래야 하나?
+    @Column
+    private LocalDateTime timestamp;
+
+    @Column
+    private long ownerAccountId;
+
+    @Column
+    private long sourceAccountId;
+
+    @Column
+    private long targetAccountId;
+
+    @Column
+    private long amount;
+
+}
+```
+
+```java
+interface ActivityRepository extends JpaRepository<ActivityJpaEntity, Long> {
+    // ActivityRepository는 스프링에 의해서 자동으로 구현체가 생성된다
+}
+```
+
+```java
+
+@RequiredArgsConstructor
+@PersistenceAdapter
+class AccountPersistenceAdapter implements
+        LoadAccountPort,
+        UpdateAccountStatePort { // 실제 영속성 포트
+
+    private final SpringDataAccountRepository accountRepository;
+    private final ActivityRepository activityRepository;
+    private final AccountMapper accountMapper;
+    // LoadAccountPort, UpdateAccountStatePort 두 개의 포트를 구현한다
+
+    @Override
+    public Account loadAccount(
+            AccountId accountId,
+            LocalDateTime baselineDate) {
+
+        // Account를 디비에서 불러오고
+        AccountJpaEntity account =
+                accountRepository.findById(accountId.getValue())
+                        .orElseThrow(EntityNotFoundException::new);
+
+        // 베이스 날짜 이후 Activity를 가져오고
+        List<ActivityJpaEntity> activities =
+                activityRepository.findByOwnerSince(
+                        accountId.getValue(),
+                        baselineDate);
+
+        // 베이스 잔고를 구하기 위해 베이스 날짜 전까지의 입금 / 출금 활동을 디비에서 가져와서
+        Long withdrawalBalance = activityRepository
+                .getWithdrawalBalanceUntil(
+                        accountId.getValue(),
+                        baselineDate)
+                .orElse(0L);
+
+        Long depositBalance = activityRepository
+                .getDepositBalanceUntil(
+                        accountId.getValue(),
+                        baselineDate)
+                .orElse(0L);
+
+        // Account Entity로 변경시 베이스 잔고를 계산한다
+        return accountMapper.mapToDomainEntity(
+                account,
+                activities,
+                withdrawalBalance,
+                depositBalance);
+
+    }
+
+    @Override
+    public void updateActivities(Account account) {
+        for (Activity activity : account.getActivityWindow().getActivities()) {
+            if (activity.getId() == null) {
+                activityRepository.save(accountMapper.mapToJpaEntity(activity));
+            }
+        }
+    }
+
+}
+
+```
+
+```java
+
+@Component
+class AccountMapper {
+    // 맵퍼는 도메인 엔티티와 영속성 엔티티 간에 쌍으로 존재한다.
+
+    Account mapToDomainEntity(
+            AccountJpaEntity account,
+            List<ActivityJpaEntity> activities,
+            Long withdrawalBalance,
+            Long depositBalance) {
+
+        Money baselineBalance = Money.subtract(
+                Money.of(depositBalance),
+                Money.of(withdrawalBalance));
+
+        return Account.withId(
+                new AccountId(account.getId()),
+                baselineBalance,
+                mapToActivityWindow(activities));
+
+    }
+
+    ActivityJpaEntity mapToJpaEntity(Activity activity) {
+        return new ActivityJpaEntity(
+                activity.getId() == null ? null : activity.getId().getValue(),
+                activity.getTimestamp(),
+                activity.getOwnerAccountId().getValue(),
+                activity.getSourceAccountId().getValue(),
+                activity.getTargetAccountId().getValue(),
+                activity.getMoney().getAmount().longValue());
+    }
+
+}
+
+```
+
 - 쌍으로 엔티티를 만들지 않고 '매핑하지 않기' 전략이 유효할 수도 있다
 - 하지만 이런 경우 JPA를 위해서 도메인 모델을 타협할 수 밖에 없다(기본 생성자라든가...)
 - 즉, 영속성 측면에 타협하지 않을 때 좀 더 풍부한 도메인 모델응 생성할 수 있다.
